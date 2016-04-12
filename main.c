@@ -86,9 +86,7 @@ void close_color_table(color_table_t *ct) {
     free((*ct).table);
 }
 
-/************
-Drop in from commandlinefanatic.com. Replace.
-************/
+/************/
 typedef struct {
   unsigned char byte;
   int prev;
@@ -260,9 +258,7 @@ void decompress(int code_length,
     out += match_len;
   }
 }
-/************
-End drop in.
-************/
+/************/
 
 void process_image_block(FILE **fp, color_table_t *gct, rgba_t *canvas, graphic_control_extension_t *gce) {
     image_descriptor_t id;
