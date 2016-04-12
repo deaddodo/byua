@@ -20,8 +20,9 @@ Currently, only GIF decoding is supported. The following formats are the ideal t
  - [ ] TIFF
  - [ ] WEBP
  
- **Current functionality:**
- ![demo img](http://i.imgur.com/u9bnWRG.png)
+**Current functionality:**
+
+![demo img](http://i.imgur.com/u9bnWRG.png)
 
 ## Data stream
 |Stream|
