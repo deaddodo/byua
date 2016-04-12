@@ -1,2 +1,2 @@
 all:
-	cc main.c shared.c -o byua
+	cc -g main.c shared.c -o byua

@@ -74,7 +74,7 @@ void read_color_table(FILE **fp, color_table_t *ct) {
     
     printf("Color table: [");
     
-    for(int i = 0; i < (*ct).size; i++) {
+    for(int i = 0; i < (*ct).size; ++i) {
         fread(&(*ct).table[i], 1, 3, *fp);
         print_block((*ct).table[i]);
     }
@@ -86,28 +86,190 @@ void close_color_table(color_table_t *ct) {
     free((*ct).table);
 }
 
-bool process_image_sblock(FILE **fp, color_table_t *gct, rgba_t *canvas, graphic_control_extension_t *gce) {
-    unsigned char size;
-    fread(&size, 1, 1, *fp);
-    
-    if(size != 0x00) {
-        printf(" > Processing sub-block!\n");
-        for(int i = 0; i < size; i++) {
-            unsigned char code;
-            fread(&code, 1, 1, *fp);
-        }
-        return true;
+/************
+Drop in from commandlinefanatic.com. Replace.
+************/
+typedef struct {
+  unsigned char byte;
+  int prev;
+  int len;
+} dictionary_entry_t;
+
+void decompress(int code_length,
+               const unsigned char *input,
+               int input_length,
+               unsigned char *out) {
+  int maxbits;
+  int i, bit;
+  int code, prev = -1;
+  dictionary_entry_t *dictionary;
+  int dictionary_ind;
+  unsigned int mask = 0x01;
+  int reset_code_length;
+  int clear_code; // This varies depending on code_length
+  int stop_code;  // one more than clear code
+  int match_len;
+
+  clear_code = 1 << ( code_length );
+  stop_code = clear_code + 1;
+  // To handle clear codes
+  reset_code_length = code_length;
+
+  // Create a dictionary large enough to hold "code_length" entries.
+  // Once the dictionary overflows, code_length increases
+  dictionary = ( dictionary_entry_t * ) 
+    malloc( sizeof( dictionary_entry_t ) * ( 1 << ( code_length + 1 ) ) );
+
+  // Initialize the first 2^code_len entries of the dictionary with their
+  // indices.  The rest of the entries will be built up dynamically.
+
+  // Technically, it shouldn't be necessary to initialize the
+  // dictionary.  The spec says that the encoder "should output a
+  // clear code as the first code in the image data stream".  It doesn't
+  // say must, though...
+  for ( dictionary_ind = 0; 
+        dictionary_ind < ( 1 << code_length ); 
+        dictionary_ind++ )
+  {
+    dictionary[ dictionary_ind ].byte = dictionary_ind;
+    // XXX this only works because prev is a 32-bit int (> 12 bits)
+    dictionary[ dictionary_ind ].prev = -1;
+    dictionary[ dictionary_ind ].len = 1;
+  }
+
+  // 2^code_len + 1 is the special "end" code; don't give it an entry here
+  dictionary_ind++;
+  dictionary_ind++;
+  
+  // TODO verify that the very last byte is clear_code + 1
+  while ( input_length )
+  {
+    code = 0x0;
+    // Always read one more bit than the code length
+    for ( i = 0; i < ( code_length + 1 ); i++ )
+    {
+      // This is different than in the file read example; that 
+      // was a call to "next_bit"
+      bit = ( *input & mask ) ? 1 : 0;
+      mask <<= 1;
+
+      if ( mask == 0x100 )
+      {
+        mask = 0x01;
+        input++;
+        input_length--;
+      }
+
+      code = code | ( bit << i );
     }
-    
-    return false;
+
+    if ( code == clear_code )
+    {
+      code_length = reset_code_length;
+      dictionary = ( dictionary_entry_t * ) realloc( dictionary,
+        sizeof( dictionary_entry_t ) * ( 1 << ( code_length + 1 ) ) );
+
+      for ( dictionary_ind = 0; 
+            dictionary_ind < ( 1 << code_length ); 
+            dictionary_ind++ )
+      {
+        dictionary[ dictionary_ind ].byte = dictionary_ind;
+        // XXX this only works because prev is a 32-bit int (> 12 bits)
+        dictionary[ dictionary_ind ].prev = -1;
+        dictionary[ dictionary_ind ].len = 1;
+      }
+      dictionary_ind++;
+      dictionary_ind++;
+      prev = -1;
+      continue;
+    }
+    else if ( code == stop_code )
+    {
+      if ( input_length > 1 )
+      {
+        fprintf( stderr, "Malformed GIF (early stop code)\n" );
+        exit( 0 );
+      }
+      break;
+    }
+
+    // Update the dictionary with this character plus the _entry_
+    // (character or string) that came before it
+    if ( ( prev > -1 ) && ( code_length < 12 ) )
+    {
+      if ( code > dictionary_ind )
+      {
+        fprintf( stderr, "code = %.02x, but dictionary_ind = %.02x\n",
+          code, dictionary_ind );
+        exit( 0 );
+      }
+
+      // Special handling for KwKwK
+      if ( code == dictionary_ind )
+      {
+        int ptr = prev;
+
+        while ( dictionary[ ptr ].prev != -1 )
+        {
+          ptr = dictionary[ ptr ].prev;
+        }
+        dictionary[ dictionary_ind ].byte = dictionary[ ptr ].byte;
+      }
+      else
+      {
+        int ptr = code;
+        while ( dictionary[ ptr ].prev != -1 )
+        {
+          ptr = dictionary[ ptr ].prev;
+        }
+        dictionary[ dictionary_ind ].byte = dictionary[ ptr ].byte;
+      }
+
+      dictionary[ dictionary_ind ].prev = prev;
+
+      dictionary[ dictionary_ind ].len = dictionary[ prev ].len + 1;
+
+      dictionary_ind++;
+
+      // GIF89a mandates that this stops at 12 bits
+      if ( ( dictionary_ind == ( 1 << ( code_length + 1 ) ) ) &&
+           ( code_length < 11 ) )
+      {
+        code_length++;
+
+        dictionary = ( dictionary_entry_t * ) realloc( dictionary,
+          sizeof( dictionary_entry_t ) * ( 1 << ( code_length + 1 ) ) );
+      }
+    }
+
+    prev = code;
+
+    // Now copy the dictionary entry backwards into "out"
+    match_len = dictionary[ code ].len;
+    while ( code != -1 )
+    {
+      out[ dictionary[ code ].len - 1 ] = dictionary[ code ].byte;
+      if ( dictionary[ code ].prev == code )
+      {
+        fprintf( stderr, "Internal error; self-reference." );
+        exit( 0 );
+      }
+      code = dictionary[ code ].prev;
+    }
+
+    out += match_len;
+  }
 }
+/************
+End drop in.
+************/
 
 void process_image_block(FILE **fp, color_table_t *gct, rgba_t *canvas, graphic_control_extension_t *gce) {
     image_descriptor_t id;
     color_table_t lct;
     color_table_t *ct;
     unsigned char code_size;
-    bool data_left = true;
+    unsigned char block_size;
     
     fread(&id, 1, sizeof(image_descriptor_t), *fp);
     
@@ -125,13 +287,39 @@ void process_image_block(FILE **fp, color_table_t *gct, rgba_t *canvas, graphic_
     fread(&code_size, 1, 1, *fp);
     
     printf("Processing Image block...\n");
-    while(data_left) {
-        data_left = process_image_sblock(fp, ct, canvas, gce);
-    }
+    do {
+        fread(&block_size, 1, 1, *fp);
+    
+        if(block_size != 0x00) {
+            unsigned char *raw_data;
+            unsigned char *processed_data;
+            
+            raw_data = malloc(sizeof(unsigned char)*block_size);
+            for(int i = 0; i < block_size; ++i) {
+                fread(&raw_data[i], 1, 1, *fp);
+            }
+            processed_data = malloc(id.w * id.h);
+            decompress(code_size, raw_data, block_size, processed_data);
+            for(int i = 0; i < (id.w * id.h); ++i) {
+                canvas[i] = (*ct).table[processed_data[i]];
+            }
+            
+            free(raw_data);
+            free(processed_data);
+        }
+    } while(block_size != 0x00);
     printf("Block process complete.\n");
     
     if(lct.active) {
         close_color_table(&lct);
+    }
+}
+
+void render(rgba_t *canvas, logical_screen_descriptor_t *lsd) {
+    for(int i = 0; i < ((*lsd).w*(*lsd).h); ++i) {
+        print_block(canvas[i]);
+        if(!((i+1)%(*lsd).w))
+            printf("\n");
     }
 }
 
@@ -182,6 +370,8 @@ int main(int argc, char *argv[]) {
     if(gct.active) {
         close_color_table(&gct);
     }
+    
+    render(canvas, &lsd);
     
     free(canvas);
     fclose(fp);
