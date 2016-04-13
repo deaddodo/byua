@@ -13,18 +13,24 @@ External dependencies:
 
 ## In Progress
 Currently, only GIF decoding is supported. The following formats are the ideal targets (encode and decode):
- - [X] GIF
- - [ ] PNG
- - [ ] JPEG
- - [ ] BMP/DIB
- - [ ] TIFF
- - [ ] WEBP
+
+|Format|Encode|Decode|
+|------|------|------|
+|GIF|:x:|:+1:|
+| - Animation|:x:|:x:|
+|PNG|:x:|:x:|
+| - Animation|:x:|:x:|
+|JPEG|:x:|:x:|
+|BMP/DIB|:x:|:x:|
+|TIFF|:x:|:x:|
+|WEBP|:x:|:x:|
  
-**Current functionality:**
+**Terminal demo:**
 
 ![demo img](http://i.imgur.com/u9bnWRG.png)
 
-## Data stream
+## Goals
+### Data stream
 |Stream|
 |------|
 |*kaeru* decodes to rgba array|
