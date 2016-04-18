@@ -1,6 +1,6 @@
 # compiled binaries
-byua
-byua_gcc
+byua/byua
+byua/byua_gcc
 *.so
 *.o
 
