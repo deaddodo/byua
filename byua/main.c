@@ -11,7 +11,7 @@ void print_block(rgba_t c) {
 
 void render(image_t *img) {
     for(int i = 0; i < ((*img).width*(*img).height); ++i) {
-        print_block((*img).canvas[1][i]);
+        print_block((*img).canvas[0][i]);
         if(!((i+1)%(*img).width))
             printf("\n");
     }
