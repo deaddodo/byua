@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
     
     fp = fopen(argv[1], "rb");
     
-	process_image(fp, &img, probe_image(fp));
+	kaeru_process_image(fp, &img, kaeru_probe_image(fp));
     
     render(&img);
     

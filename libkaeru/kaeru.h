@@ -7,6 +7,6 @@
 #include "shared.h"
 #include "gif.h"
 
-extern image_type_t probe_image(FILE *fp);
-extern void process_image(FILE *fp, image_t *img, image_type_t img_type);
+extern image_type_t kaeru_probe_image(FILE *fp);
+extern void kaeru_process_image(FILE *fp, image_t *img, image_type_t img_type);
 #endif
