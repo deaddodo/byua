@@ -37,9 +37,9 @@ typedef struct {
 } __attribute__((packed)) image_descriptor_t;
 
 typedef struct {
-	unsigned char byte;
-	int prev;
-	int len;
+    unsigned char byte;
+    int prev;
+    int len;
 } dictionary_entry_t;
 
 logical_screen_descriptor_t read_header(FILE **fp);
@@ -51,7 +51,7 @@ void decompress(int code_length,
                 unsigned char *out);
 void process_image_block(FILE **fp,
                          color_table_t *gct,
-						 rgba_t *canvas,
-						 graphic_control_extension_t *gce);
+                         rgba_t *canvas,
+                         graphic_control_extension_t *gce);
 void gif_process_image(FILE *fp, image_t *img);
 #endif

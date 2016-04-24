@@ -19,18 +19,18 @@ void render(image_t *img) {
 
 int main(int argc, char *argv[]) {
     FILE *fp;
-	image_t img;
+    image_t img;
     
     fp = fopen(argv[1], "rb");
     
-	kaeru_process_image(fp, &img, kaeru_probe_image(fp));
+    kaeru_process_image(fp, &img, kaeru_probe_image(fp));
     
     render(&img);
     
     for(int i = 0; i < img.frames; ++i) {
-		free(img.canvas[i]);
-	}
-	free(img.canvas);
+        free(img.canvas[i]);
+    }
+    free(img.canvas);
     fclose(fp);
     
     return 0;
