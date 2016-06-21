@@ -11,6 +11,7 @@ extern void kaeru_process_image(FILE *fp, image_t *img, image_type_t img_type) {
     case GIF:
         gif_process_image(fp, img);
         break;
+    case PNG:
     default:
         printf("Unsupported filetype.\n");
         break;
